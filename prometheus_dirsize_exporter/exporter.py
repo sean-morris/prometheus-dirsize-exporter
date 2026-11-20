@@ -77,10 +77,9 @@ class BudgetedDirInfoWalker:
         except OSError as e:
             if e.errno == errno.EINVAL:
                 # See https://github.com/2i2c-org/prometheus-dirsize-exporter/issues/40
-                # Over NFS, listing a directory that holds a unix domain socket
-                # can raise EINVAL. Skip this directory rather than aborting the walk.
+                # A directory containing a unix domain socket accessed over NFS
+                # can raise EINVAL on listdir. Skip it rather than aborting.
                 return None
-            # Any other errors should just be propagated
             raise
         # Split into files and directories for different kinds of traversal.
         # We count symlinks as files, but do not resolve them when checking size -
@@ -116,7 +115,7 @@ class BudgetedDirInfoWalker:
             dirinfo = self.get_dir_info(d)
             if dirinfo is None:
                 # The directory was deleted between the time the listing
-                # was done and now, or it could not be listed.
+                # was done and now.
                 continue
             total_size += dirinfo.size
             entries_count += dirinfo.entries_count
