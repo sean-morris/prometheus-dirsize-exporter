@@ -64,20 +64,21 @@ class BudgetedDirInfoWalker:
         start_time = time.monotonic()
         try:
             self_statinfo = os.stat(path)
+        except FileNotFoundError:
+            # Directory was deleted from the time it was listed and now
+            return None
 
-            # Get absolute path of all children of directory
+        # Get absolute path of all children of directory
+        try:
             children = [
                 os.path.abspath(os.path.join(path, c))
                 for c in self.do_iops_action(os.listdir, path)
             ]
-        except FileNotFoundError:
-            # Directory was deleted from the time it was listed and now
-            return None
         except OSError as e:
             if e.errno == errno.EINVAL:
                 # See https://github.com/2i2c-org/prometheus-dirsize-exporter/issues/40
-                # A directory containing a unix domain socket accessed over NFS
-                # can raise EINVAL on listdir. Skip it rather than aborting.
+                # Over NFS, listing a directory that holds a unix domain socket
+                # can raise EINVAL. Skip this directory rather than aborting the walk.
                 return None
             # Any other errors should just be propagated
             raise
@@ -115,7 +116,7 @@ class BudgetedDirInfoWalker:
             dirinfo = self.get_dir_info(d)
             if dirinfo is None:
                 # The directory was deleted between the time the listing
-                # was done and now.
+                # was done and now, or it could not be listed.
                 continue
             total_size += dirinfo.size
             entries_count += dirinfo.entries_count
